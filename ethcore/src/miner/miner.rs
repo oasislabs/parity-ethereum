@@ -1260,7 +1260,8 @@ impl miner::MinerService for Miner {
 	}
 
 	fn pending_state(&self, latest_block_number: BlockNumber) -> Option<Self::State> {
-		self.map_existing_pending_block(|b| b.state().clone(), latest_block_number)
+		unimplemented!();
+		// self.map_existing_pending_block(|b| b.state().clone(), latest_block_number)
 	}
 
 	fn pending_block_header(&self, latest_block_number: BlockNumber) -> Option<Header> {

@@ -72,15 +72,15 @@ extern crate ethcore_logger;
 extern crate ethcore_miner;
 #[cfg(feature = "stratum")]
 extern crate ethcore_stratum;
-extern crate ethcore_transaction as transaction;
-extern crate ethereum_types;
+pub extern crate ethcore_transaction as transaction;
+pub extern crate ethereum_types;
 extern crate ethjson;
-extern crate ethkey;
+pub extern crate ethkey;
 
 extern crate hashdb;
 extern crate itertools;
-extern crate kvdb;
-extern crate kvdb_memorydb;
+pub extern crate kvdb;
+pub extern crate kvdb_memorydb;
 extern crate kvdb_rocksdb;
 extern crate lru_cache;
 extern crate num_cpus;
@@ -89,7 +89,7 @@ extern crate parity_machine;
 extern crate parking_lot;
 extern crate rand;
 extern crate rayon;
-extern crate rlp;
+pub extern crate rlp;
 extern crate rlp_compress;
 extern crate keccak_hash as hash;
 extern crate keccak_hasher;
@@ -109,7 +109,7 @@ extern crate using_queue;
 extern crate vm;
 extern crate wasm;
 extern crate memory_cache;
-extern crate journaldb;
+pub extern crate journaldb;
 #[cfg(any(test, feature = "json-tests", feature = "test-helpers"))]
 extern crate tempdir;
 
@@ -170,7 +170,7 @@ pub mod verification;
 mod cache_manager;
 mod account_db;
 mod externalities;
-mod blockchain;
+pub mod blockchain;
 mod factory;
 mod tx_filter;
 

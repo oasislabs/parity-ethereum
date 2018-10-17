@@ -354,90 +354,91 @@ impl Importer {
 	}
 
 	fn check_and_lock_block(&self, block: PreverifiedBlock, client: &Client) -> EthcoreResult<LockedBlock> {
-		let engine = &*self.engine;
-		let header = block.header.clone();
-
-		// Check the block isn't so old we won't be able to enact it.
-		let best_block_number = client.chain.read().best_block_number();
-		if client.pruning_info().earliest_state > header.number() {
-			warn!(target: "client", "Block import failed for #{} ({})\nBlock is ancient (current best block: #{}).", header.number(), header.hash(), best_block_number);
-			bail!("Block is ancient");
-		}
-
-		// Check if parent is in chain
-		let parent = match client.block_header_decoded(BlockId::Hash(*header.parent_hash())) {
-			Some(h) => h,
-			None => {
-				warn!(target: "client", "Block import failed for #{} ({}): Parent not found ({}) ", header.number(), header.hash(), header.parent_hash());
-				bail!("Parent not found");
-			}
-		};
-
-		let chain = client.chain.read();
-		// Verify Block Family
-		let verify_family_result = self.verifier.verify_block_family(
-			&header,
-			&parent,
-			engine,
-			Some(verification::FullFamilyParams {
-				block: &block,
-				block_provider: &**chain,
-				client
-			}),
-		);
-
-		if let Err(e) = verify_family_result {
-			warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-			bail!(e);
-		};
-
-		let verify_external_result = self.verifier.verify_block_external(&header, engine);
-		if let Err(e) = verify_external_result {
-			warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-			bail!(e);
-		};
-
-		// Enact Verified Block
-		let last_hashes = client.build_last_hashes(header.parent_hash());
-		let db = client.state_db.read().boxed_clone_canon(header.parent_hash());
-
-		let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
-		let enact_result = enact_verified(
-			block,
-			engine,
-			client.tracedb.read().tracing_enabled(),
-			db,
-			&parent,
-			last_hashes,
-			client.factories.clone(),
-			is_epoch_begin,
-			&mut chain.ancestry_with_metadata_iter(*header.parent_hash()),
-		);
-
-		let mut locked_block = match enact_result {
-			Ok(b) => b,
-			Err(e) => {
-				warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-				bail!(e);
-			}
-		};
+		unreachable!();
+		// let engine = &*self.engine;
+		// let header = block.header.clone();
+                //
+		// // Check the block isn't so old we won't be able to enact it.
+		// let best_block_number = client.chain.read().best_block_number();
+		// if client.pruning_info().earliest_state > header.number() {
+		// 	warn!(target: "client", "Block import failed for #{} ({})\nBlock is ancient (current best block: #{}).", header.number(), header.hash(), best_block_number);
+		// 	bail!("Block is ancient");
+		// }
+                //
+		// // Check if parent is in chain
+		// let parent = match client.block_header_decoded(BlockId::Hash(*header.parent_hash())) {
+		// 	Some(h) => h,
+		// 	None => {
+		// 		warn!(target: "client", "Block import failed for #{} ({}): Parent not found ({}) ", header.number(), header.hash(), header.parent_hash());
+		// 		bail!("Parent not found");
+		// 	}
+		// };
+                //
+		// let chain = client.chain.read();
+		// // Verify Block Family
+		// let verify_family_result = self.verifier.verify_block_family(
+		// 	&header,
+		// 	&parent,
+		// 	engine,
+		// 	Some(verification::FullFamilyParams {
+		// 		block: &block,
+		// 		block_provider: &**chain,
+		// 		client
+		// 	}),
+		// );
+                //
+		// if let Err(e) = verify_family_result {
+		// 	warn!(target: "client", "Stage 3 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+		// 	bail!(e);
+		// };
+                //
+		// let verify_external_result = self.verifier.verify_block_external(&header, engine);
+		// if let Err(e) = verify_external_result {
+		// 	warn!(target: "client", "Stage 4 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+		// 	bail!(e);
+		// };
+                //
+		// // Enact Verified Block
+		// let last_hashes = client.build_last_hashes(header.parent_hash());
+		// let db = client.state_db.read().boxed_clone_canon(header.parent_hash());
+                //
+		// let is_epoch_begin = chain.epoch_transition(parent.number(), *header.parent_hash()).is_some();
+		// let enact_result = enact_verified(
+		// 	block,
+		// 	engine,
+		// 	client.tracedb.read().tracing_enabled(),
+		// 	db,
+		// 	&parent,
+		// 	last_hashes,
+		// 	client.factories.clone(),
+		// 	is_epoch_begin,
+		// 	&mut chain.ancestry_with_metadata_iter(*header.parent_hash()),
+		// );
+                //
+		// let mut locked_block = match enact_result {
+		// 	Ok(b) => b,
+		// 	Err(e) => {
+		// 		warn!(target: "client", "Block import failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+		// 		bail!(e);
+		// 	}
+		// };
 
 		// Strip receipts for blocks before validate_receipts_transition,
 		// if the expected receipts root header does not match.
 		// (i.e. allow inconsistency in receipts outcome before the transition block)
-		if header.number() < engine.params().validate_receipts_transition
-			&& header.receipts_root() != locked_block.block().header().receipts_root()
-		{
-			locked_block.strip_receipts_outcomes();
-		}
-
-		// Final Verification
-		if let Err(e) = self.verifier.verify_block_final(&header, locked_block.block().header()) {
-			warn!(target: "client", "Stage 5 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
-			bail!(e);
-		}
-
-		Ok(locked_block)
+		// if header.number() < engine.params().validate_receipts_transition
+		// 	&& header.receipts_root() != locked_block.block().header().receipts_root()
+		// {
+		// 	locked_block.strip_receipts_outcomes();
+		// }
+                //
+		// // Final Verification
+		// if let Err(e) = self.verifier.verify_block_final(&header, locked_block.block().header()) {
+		// 	warn!(target: "client", "Stage 5 block verification failed for #{} ({})\nError: {:?}", header.number(), header.hash(), e);
+		// 	bail!(e);
+		// }
+                //
+		// Ok(locked_block)
 	}
 
 	/// Import a block with transaction receipts.
@@ -470,105 +471,106 @@ impl Importer {
 	//
 	// The header passed is from the original block data and is sealed.
 	fn commit_block<B>(&self, block: B, header: &Header, block_data: encoded::Block, client: &Client) -> ImportRoute where B: Drain {
-		let hash = &header.hash();
-		let number = header.number();
-		let parent = header.parent_hash();
-		let chain = client.chain.read();
-		let is_finalized = false;
-
-		// Commit results
-		let block = block.drain();
-		debug_assert_eq!(header.hash(), block_data.header_view().hash());
-
-		let mut batch = DBTransaction::new();
-
-		let ancestry_actions = self.engine.ancestry_actions(&block, &mut chain.ancestry_with_metadata_iter(*parent));
-
-		let receipts = block.receipts;
-		let traces = block.traces.drain();
-		let best_hash = chain.best_block_hash();
-
-		let new = ExtendedHeader {
-			header: header.clone(),
-			is_finalized,
-			parent_total_difficulty: chain.block_details(&parent).expect("Parent block is in the database; qed").total_difficulty
-		};
-
-		let best = {
-			let hash = best_hash;
-			let header = chain.block_header_data(&hash)
-				.expect("Best block is in the database; qed")
-				.decode()
-				.expect("Stored block header is valid RLP; qed");
-			let details = chain.block_details(&hash)
-				.expect("Best block is in the database; qed");
-
-			ExtendedHeader {
-				parent_total_difficulty: details.total_difficulty - *header.difficulty(),
-				is_finalized: details.is_finalized,
-				header: header,
-			}
-		};
-
-		let route = chain.tree_route(best_hash, *parent).expect("forks are only kept when it has common ancestors; tree route from best to prospective's parent always exists; qed");
-		let fork_choice = if route.is_from_route_finalized {
-			ForkChoice::Old
-		} else {
-			self.engine.fork_choice(&new, &best)
-		};
-
-		// CHECK! I *think* this is fine, even if the state_root is equal to another
-		// already-imported block of the same number.
-		// TODO: Prove it with a test.
-		let mut state = block.state.drop().1;
-
-		// check epoch end signal, potentially generating a proof on the current
-		// state.
-		self.check_epoch_end_signal(
-			&header,
-			block_data.raw(),
-			&receipts,
-			&state,
-			&chain,
-			&mut batch,
-			client
-		);
-
-		state.journal_under(&mut batch, number, hash).expect("DB commit failed");
-
-		for ancestry_action in ancestry_actions {
-			let AncestryAction::MarkFinalized(ancestry) = ancestry_action;
-			chain.mark_finalized(&mut batch, ancestry).expect("Engine's ancestry action must be known blocks; qed");
-		}
-
-		let route = chain.insert_block(&mut batch, block_data, receipts.clone(), ExtrasInsert {
-			fork_choice: fork_choice,
-			is_finalized,
-		});
-
-		client.tracedb.read().import(&mut batch, TraceImportRequest {
-			traces: traces.into(),
-			block_hash: hash.clone(),
-			block_number: number,
-			enacted: route.enacted.clone(),
-			retracted: route.retracted.len()
-		});
-
-		let is_canon = route.enacted.last().map_or(false, |h| h == hash);
-		state.sync_cache(&route.enacted, &route.retracted, is_canon);
-		// Final commit to the DB
-		client.db.read().key_value().write_buffered(batch);
-		chain.commit();
-
-		self.check_epoch_end(&header, &chain, client);
-
-		client.update_last_hashes(&parent, hash);
-
-		if let Err(e) = client.prune_ancient(state, &chain) {
-			warn!("Failed to prune ancient state data: {}", e);
-		}
-
-		route
+		unreachable!();
+		// let hash = &header.hash();
+		// let number = header.number();
+		// let parent = header.parent_hash();
+		// let chain = client.chain.read();
+		// let is_finalized = false;
+                //
+		// // Commit results
+		// let block = block.drain();
+		// debug_assert_eq!(header.hash(), block_data.header_view().hash());
+                //
+		// let mut batch = DBTransaction::new();
+                //
+		// let ancestry_actions = self.engine.ancestry_actions(&block, &mut chain.ancestry_with_metadata_iter(*parent));
+                //
+		// let receipts = block.receipts;
+		// let traces = block.traces.drain();
+		// let best_hash = chain.best_block_hash();
+                //
+		// let new = ExtendedHeader {
+		// 	header: header.clone(),
+		// 	is_finalized,
+		// 	parent_total_difficulty: chain.block_details(&parent).expect("Parent block is in the database; qed").total_difficulty
+		// };
+                //
+		// let best = {
+		// 	let hash = best_hash;
+		// 	let header = chain.block_header_data(&hash)
+		// 		.expect("Best block is in the database; qed")
+		// 		.decode()
+		// 		.expect("Stored block header is valid RLP; qed");
+		// 	let details = chain.block_details(&hash)
+		// 		.expect("Best block is in the database; qed");
+                //
+		// 	ExtendedHeader {
+		// 		parent_total_difficulty: details.total_difficulty - *header.difficulty(),
+		// 		is_finalized: details.is_finalized,
+		// 		header: header,
+		// 	}
+		// };
+                //
+		// let route = chain.tree_route(best_hash, *parent).expect("forks are only kept when it has common ancestors; tree route from best to prospective's parent always exists; qed");
+		// let fork_choice = if route.is_from_route_finalized {
+		// 	ForkChoice::Old
+		// } else {
+		// 	self.engine.fork_choice(&new, &best)
+		// };
+                //
+		// // CHECK! I *think* this is fine, even if the state_root is equal to another
+		// // already-imported block of the same number.
+		// // TODO: Prove it with a test.
+		// let mut state = block.state.drop().1;
+                //
+		// // check epoch end signal, potentially generating a proof on the current
+		// // state.
+		// self.check_epoch_end_signal(
+		// 	&header,
+		// 	block_data.raw(),
+		// 	&receipts,
+		// 	&state,
+		// 	&chain,
+		// 	&mut batch,
+		// 	client
+		// );
+                //
+		// state.journal_under(&mut batch, number, hash).expect("DB commit failed");
+                //
+		// for ancestry_action in ancestry_actions {
+		// 	let AncestryAction::MarkFinalized(ancestry) = ancestry_action;
+		// 	chain.mark_finalized(&mut batch, ancestry).expect("Engine's ancestry action must be known blocks; qed");
+		// }
+                //
+		// let route = chain.insert_block(&mut batch, block_data, receipts.clone(), ExtrasInsert {
+		// 	fork_choice: fork_choice,
+		// 	is_finalized,
+		// });
+                //
+		// client.tracedb.read().import(&mut batch, TraceImportRequest {
+		// 	traces: traces.into(),
+		// 	block_hash: hash.clone(),
+		// 	block_number: number,
+		// 	enacted: route.enacted.clone(),
+		// 	retracted: route.retracted.len()
+		// });
+                //
+		// let is_canon = route.enacted.last().map_or(false, |h| h == hash);
+		// state.sync_cache(&route.enacted, &route.retracted, is_canon);
+		// // Final commit to the DB
+		// client.db.read().key_value().write_buffered(batch);
+		// chain.commit();
+                //
+		// self.check_epoch_end(&header, &chain, client);
+                //
+		// client.update_last_hashes(&parent, hash);
+                //
+		// if let Err(e) = client.prune_ancient(state, &chain) {
+		// 	warn!("Failed to prune ancient state data: {}", e);
+		// }
+                //
+		// route
 	}
 
 	// check for epoch end signal and write pending transition if it occurs.
@@ -2227,35 +2229,36 @@ impl PrepareOpenBlock for Client {
 		let h = best_header.hash();
 
 		let is_epoch_begin = chain.epoch_transition(best_header.number(), h).is_some();
-		let mut open_block = OpenBlock::new(
-			engine,
-			self.factories.clone(),
-			self.tracedb.read().tracing_enabled(),
-			self.state_db.read().boxed_clone_canon(&h),
-			&best_header,
-			self.build_last_hashes(&h),
-			author,
-			gas_range_target,
-			extra_data,
-			is_epoch_begin,
-			&mut chain.ancestry_with_metadata_iter(best_header.hash()),
-		)?;
-
-		// Add uncles
-		chain
-			.find_uncle_headers(&h, engine.maximum_uncle_age())
-			.unwrap_or_else(Vec::new)
-			.into_iter()
-			.take(engine.maximum_uncle_count(open_block.header().number()))
-			.foreach(|h| {
-				open_block.push_uncle(h.decode().expect("decoding failure")).expect("pushing maximum_uncle_count;
-												open_block was just created;
-												push_uncle is not ok only if more than maximum_uncle_count is pushed;
-												so all push_uncle are Ok;
-												qed");
-			});
-
-		Ok(open_block)
+		unimplemented!();
+		// let mut open_block = OpenBlock::new(
+		// 	engine,
+		// 	self.factories.clone(),
+		// 	self.tracedb.read().tracing_enabled(),
+		// 	self.state_db.read().boxed_clone_canon(&h),
+		// 	&best_header,
+		// 	self.build_last_hashes(&h),
+		// 	author,
+		// 	gas_range_target,
+		// 	extra_data,
+		// 	is_epoch_begin,
+		// 	&mut chain.ancestry_with_metadata_iter(best_header.hash()),
+		// )?;
+                //
+		// // Add uncles
+		// chain
+		// 	.find_uncle_headers(&h, engine.maximum_uncle_age())
+		// 	.unwrap_or_else(Vec::new)
+		// 	.into_iter()
+		// 	.take(engine.maximum_uncle_count(open_block.header().number()))
+		// 	.foreach(|h| {
+		// 		open_block.push_uncle(h.decode().expect("decoding failure")).expect("pushing maximum_uncle_count;
+		// 										open_block was just created;
+		// 										push_uncle is not ok only if more than maximum_uncle_count is pushed;
+		// 										so all push_uncle are Ok;
+		// 										qed");
+		// 	});
+                //
+		// Ok(open_block)
 	}
 }
 

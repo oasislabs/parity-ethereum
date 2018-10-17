@@ -144,44 +144,45 @@ pub fn generate_dummy_client_with_spec_accounts_and_data<F>(test_spec: F, accoun
 	for _ in 0..block_number {
 		last_hashes.push(last_header.hash());
 
+		unreachable!();
 		// forge block.
-		let mut b = OpenBlock::new(
-			test_engine,
-			Default::default(),
-			false,
-			db,
-			&last_header,
-			Arc::new(last_hashes.clone()),
-			author.clone(),
-			(3141562.into(), 31415620.into()),
-			vec![],
-			false,
-			&mut Vec::new().into_iter(),
-		).unwrap();
-		rolling_timestamp += 10;
-		b.set_timestamp(rolling_timestamp);
-
-		// first block we don't have any balance, so can't send any transactions.
-		for _ in 0..txs_per_block {
-			b.push_transaction(Transaction {
-				nonce: n.into(),
-				gas_price: tx_gas_prices[n % tx_gas_prices.len()],
-				gas: 100000.into(),
-				action: Action::Create,
-				data: vec![],
-				value: U256::zero(),
-			}.sign(kp.secret(), Some(test_spec.chain_id())), None).unwrap();
-			n += 1;
-		}
-
-		let b = b.close_and_lock().unwrap().seal(test_engine, vec![]).unwrap();
-
-		if let Err(e) = client.import_block(Unverified::from_rlp(b.rlp_bytes()).unwrap()) {
-			panic!("error importing block which is valid by definition: {:?}", e);
-		}
-
-		last_header = view!(BlockView, &b.rlp_bytes()).header();
-		db = b.drain().state.drop().1;
+		// let mut b = OpenBlock::new(
+		// 	test_engine,
+		// 	Default::default(),
+		// 	false,
+		// 	db,
+		// 	&last_header,
+		// 	Arc::new(last_hashes.clone()),
+		// 	author.clone(),
+		// 	(3141562.into(), 31415620.into()),
+		// 	vec![],
+		// 	false,
+		// 	&mut Vec::new().into_iter(),
+		// ).unwrap();
+		// rolling_timestamp += 10;
+		// b.set_timestamp(rolling_timestamp);
+                //
+		// // first block we don't have any balance, so can't send any transactions.
+		// for _ in 0..txs_per_block {
+		// 	b.push_transaction(Transaction {
+		// 		nonce: n.into(),
+		// 		gas_price: tx_gas_prices[n % tx_gas_prices.len()],
+		// 		gas: 100000.into(),
+		// 		action: Action::Create,
+		// 		data: vec![],
+		// 		value: U256::zero(),
+		// 	}.sign(kp.secret(), Some(test_spec.chain_id())), None).unwrap();
+		// 	n += 1;
+		// }
+                //
+		// let b = b.close_and_lock().unwrap().seal(test_engine, vec![]).unwrap();
+                //
+		// if let Err(e) = client.import_block(Unverified::from_rlp(b.rlp_bytes()).unwrap()) {
+		// 	panic!("error importing block which is valid by definition: {:?}", e);
+		// }
+                //
+		// last_header = view!(BlockView, &b.rlp_bytes()).header();
+		// db = b.drain().state.drop().1;
 	}
 	client.flush_queue();
 	client.import_verified_blocks();
@@ -263,30 +264,29 @@ pub fn get_test_client_with_blocks(blocks: Vec<Bytes>) -> Arc<Client> {
 	client
 }
 
-/// Creates new test instance of `BlockChainDB`
-pub fn new_db() -> Arc<BlockChainDB> {
-	struct TestBlockChainDB {
-		_blooms_dir: TempDir,
-		_trace_blooms_dir: TempDir,
-		blooms: blooms_db::Database,
-		trace_blooms: blooms_db::Database,
-		key_value: Arc<KeyValueDB>,
+struct TestBlockChainDB {
+	_blooms_dir: TempDir,
+	_trace_blooms_dir: TempDir,
+	blooms: blooms_db::Database,
+	trace_blooms: blooms_db::Database,
+	key_value: Arc<KeyValueDB>,
+}
+
+impl BlockChainDB for TestBlockChainDB {
+	fn key_value(&self) -> &Arc<KeyValueDB> {
+		&self.key_value
 	}
 
-	impl BlockChainDB for TestBlockChainDB {
-		fn key_value(&self) -> &Arc<KeyValueDB> {
-			&self.key_value
-		}
-
-		fn blooms(&self) -> &blooms_db::Database {
-			&self.blooms
-		}
-
-		fn trace_blooms(&self) -> &blooms_db::Database {
-			&self.trace_blooms
-		}
+	fn blooms(&self) -> &blooms_db::Database {
+		&self.blooms
 	}
 
+	fn trace_blooms(&self) -> &blooms_db::Database {
+		&self.trace_blooms
+	}
+}
+
+pub fn new_db_with_kvdb(key_value: Arc<KeyValueDB>) -> Arc<BlockChainDB> {
 	let blooms_dir = TempDir::new("").unwrap();
 	let trace_blooms_dir = TempDir::new("").unwrap();
 
@@ -295,10 +295,15 @@ pub fn new_db() -> Arc<BlockChainDB> {
 		trace_blooms: blooms_db::Database::open(trace_blooms_dir.path()).unwrap(),
 		_blooms_dir: blooms_dir,
 		_trace_blooms_dir: trace_blooms_dir,
-		key_value: Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap()))
+		key_value: key_value
 	};
 
 	Arc::new(db)
+}
+
+/// Creates new test instance of `BlockChainDB`
+pub fn new_db() -> Arc<BlockChainDB> {
+	new_db_with_kvdb(Arc::new(::kvdb_memorydb::create(::db::NUM_COLUMNS.unwrap())))
 }
 
 /// Creates new instance of KeyValueDBHandler

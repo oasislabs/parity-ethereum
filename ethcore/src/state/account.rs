@@ -49,6 +49,7 @@ pub enum Filth {
 /// Single account in the system.
 /// Keeps track of changes to the code and storage.
 /// The changes are applied in `commit_storage` and `commit_code`
+#[derive(Clone)]
 pub struct Account {
 	// Balance of the account.
 	balance: U256,

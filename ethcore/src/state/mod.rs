@@ -102,7 +102,7 @@ enum AccountState {
 	Committed,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// In-memory copy of the account data. Holds the optional account
 /// and the modification status.
 /// Account entry can contain existing (`Some`) or non-existing
@@ -306,6 +306,7 @@ pub fn prove_transaction_virtual<H: AsHashDB<KeccakHasher, DBValue> + Send + Syn
 /// checkpoint can be discarded with `discard_checkpoint`. All of the orignal
 /// backed-up values are moved into a parent checkpoint (if any).
 ///
+#[derive(Clone)]
 pub struct State<B> {
 	db: B,
 	root: H256,

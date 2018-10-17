@@ -5,6 +5,9 @@ version = "0.0.1"
 license = "GPL-3.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 
+[lib]
+name = "hardware_wallet"
+
 [dependencies]
 ethereum-types = "0.4"
 ethkey = { path = "../../ethkey" }

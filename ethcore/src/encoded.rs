@@ -178,7 +178,7 @@ impl Body {
 
 /// Owning block view.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Block(Vec<u8>);
+pub struct Block(pub Vec<u8>);
 
 impl HeapSizeOf for Block {
 	fn heap_size_of_children(&self) -> usize { self.0.heap_size_of_children() }

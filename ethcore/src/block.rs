@@ -42,9 +42,11 @@ use ethereum_types::{H256, U256, Address, Bloom};
 use factory::Factories;
 use hash::keccak;
 use header::{Header, ExtendedHeader};
+use journaldb::overlaydb::OverlayDB;
 use receipt::{Receipt, TransactionOutcome};
 use rlp::{Rlp, RlpStream, Encodable, Decodable, DecoderError, encode_list};
-use state_db::StateDB;
+// use state_db::StateDB;
+use state::backend::{Basic as BasicBackend, Backend};
 use state::State;
 use trace::Tracing;
 use transaction::{UnverifiedTransaction, SignedTransaction, Error as TransactionError};
@@ -52,6 +54,8 @@ use triehash::ordered_trie_root;
 use unexpected::{Mismatch, OutOfBounds};
 use verification::PreverifiedBlock;
 use vm::{EnvInfo, LastHashes};
+
+type StateDB = BasicBackend<OverlayDB>;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -563,36 +567,37 @@ fn enact(
 	is_epoch_begin: bool,
 	ancestry: &mut Iterator<Item=ExtendedHeader>,
 ) -> Result<LockedBlock, Error> {
-	{
-		if ::log::max_level() >= ::log::Level::Trace {
-			let s = State::from_existing(db.boxed_clone(), parent.state_root().clone(), engine.account_start_nonce(parent.number() + 1), factories.clone())?;
-			trace!(target: "enact", "num={}, root={}, author={}, author_balance={}\n",
-				header.number(), s.root(), header.author(), s.balance(&header.author())?);
-		}
-	}
-
-	let mut b = OpenBlock::new(
-		engine,
-		factories,
-		tracing,
-		db,
-		parent,
-		last_hashes,
-		Address::new(),
-		(3141562.into(), 31415620.into()),
-		vec![],
-		is_epoch_begin,
-		ancestry,
-	)?;
-
-	b.populate_from(&header);
-	b.push_transactions(transactions)?;
-
-	for u in uncles {
-		b.push_uncle(u)?;
-	}
-
-	b.close_and_lock()
+		unreachable!();
+	// {
+	// 	if ::log::max_level() >= ::log::Level::Trace {
+	// 		let s = State::from_existing(db.boxed_clone(), parent.state_root().clone(), engine.account_start_nonce(parent.number() + 1), factories.clone())?;
+	// 		trace!(target: "enact", "num={}, root={}, author={}, author_balance={}\n",
+	// 			header.number(), s.root(), header.author(), s.balance(&header.author())?);
+	// 	}
+	// }
+        //
+	// let mut b = OpenBlock::new(
+	// 	engine,
+	// 	factories,
+	// 	tracing,
+	// 	db,
+	// 	parent,
+	// 	last_hashes,
+	// 	Address::new(),
+	// 	(3141562.into(), 31415620.into()),
+	// 	vec![],
+	// 	is_epoch_begin,
+	// 	ancestry,
+	// )?;
+        //
+	// b.populate_from(&header);
+	// b.push_transactions(transactions)?;
+        //
+	// for u in uncles {
+	// 	b.push_uncle(u)?;
+	// }
+        //
+	// b.close_and_lock()
 }
 
 /// Enact the block given by `block_bytes` using `engine` on the database `db` with given `parent` block header

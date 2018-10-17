@@ -389,22 +389,23 @@ impl PrepareOpenBlock for TestBlockChainClient {
 		let db = self.spec.ensure_db_good(get_temp_state_db(), &Default::default()).unwrap();
 
 		let last_hashes = vec![genesis_header.hash()];
-		let mut open_block = OpenBlock::new(
-			engine,
-			Default::default(),
-			false,
-			db,
-			&genesis_header,
-			Arc::new(last_hashes),
-			author,
-			gas_range_target,
-			extra_data,
-			false,
-			&mut Vec::new().into_iter(),
-		)?;
-		// TODO [todr] Override timestamp for predictability
-		open_block.set_timestamp(*self.latest_block_timestamp.read());
-		Ok(open_block)
+		unreachable!();
+		// let mut open_block = OpenBlock::new(
+		// 	engine,
+		// 	Default::default(),
+		// 	false,
+		// 	db,
+		// 	&genesis_header,
+		// 	Arc::new(last_hashes),
+		// 	author,
+		// 	gas_range_target,
+		// 	extra_data,
+		// 	false,
+		// 	&mut Vec::new().into_iter(),
+		// )?;
+		// // TODO [todr] Override timestamp for predictability
+		// open_block.set_timestamp(*self.latest_block_timestamp.read());
+		// Ok(open_block)
 	}
 }
 
