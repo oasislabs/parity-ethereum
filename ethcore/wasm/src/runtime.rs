@@ -255,7 +255,7 @@ impl<'a> Runtime<'a> {
 	}
 
 	/// Same as overflow_charge, but with amount adjusted by wasm opcodes coeff
-	pub fn adjusted_overflow_charge<F>(&mut self, f: F) -> Result<()>
+	pub fn adjusted_overflow_charge<F>(&mut self, f: F, func: String) -> Result<()>
 		where F: FnOnce(&vm::Schedule) -> Option<u64>
 	{
 		self.overflow_charge(|schedule|

@@ -201,11 +201,12 @@ impl<Cost: 'static + CostType> vm::Exec for Interpreter<Cost> {
 				InterpreterResult::Continue => {},
 				InterpreterResult::Done(value) => return Ok(value),
 				InterpreterResult::Trap(trap) => match trap {
-					println!("gas_profile: {:?}", gas_profile);
 					TrapKind::Call(params) => {
+						println!("gas_profile: {:?}", gas_profile);
 						return Err(TrapError::Call(params, self));
 					},
 					TrapKind::Create(params, address) => {
+						println!("gas_profile: {:?}", gas_profile);
 						return Err(TrapError::Create(params, address, self));
 					},
 				},

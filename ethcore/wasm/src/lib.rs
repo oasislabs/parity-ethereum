@@ -97,7 +97,7 @@ impl WasmInterpreter {
 
 		let loaded_module = wasmi::Module::from_parity_wasm_module(module).map_err(Error::Interpreter)?;
 
-		let instantiation_resolver = env::ImportResolver::with_limit(16, ext.schedule().wasm());
+		let instantiation_resolver = env::ImportResolver::with_limit(<u32>::max_value() - 1, ext.schedule().wasm());
 
 		let module_instance = wasmi::ModuleInstance::new(
 			&loaded_module,
@@ -137,13 +137,14 @@ impl WasmInterpreter {
 			// total_charge ∈ [0..2^64) if static_region ∈ [0..2^16)
 			// qed
 			assert!(runtime.schedule().wasm().initial_mem < 1 << 16);
-			runtime.charge(|s| initial_memory as u64 * s.wasm().initial_mem as u64)?;
+			runtime.charge(|s| initial_memory as u64 * s.wasm().initial_mem as u64, "exec".to_string())?;
 
 			let module_instance = module_instance.run_start(&mut runtime).map_err(Error::Trap)?;
 
 			let invoke_result = module_instance.invoke_export("call", &[], &mut runtime);
 
 			let mut execution_outcome = ExecutionOutcome::NotSpecial;
+			info!("Transaction gas profile: {:?}", runtime.gas_profile);
 			if let Err(InterpreterError::Trap(ref trap)) = invoke_result {
 				if let wasmi::TrapKind::Host(ref boxed) = *trap.kind() {
 					let ref runtime_err = boxed.downcast_ref::<runtime::Error>()
