@@ -194,12 +194,14 @@ impl<'a> Runtime<'a> {
 	///
 	/// Returns false if gas limit exceeded and true if not.
 	/// Intuition about the return value sense is to aswer the question 'are we allowed to continue?'
-	fn charge_gas(&mut self, amount: u64, func: String) -> bool {
+	fn charge_gas<S>(&mut self, amount: u64, func: S) -> bool
+		where S: AsRef<str>
+	{
 		let prev = self.gas_counter;
-		let total_func_cost = self.gas_profile.get(&func).cloned();
+		let total_func_cost = self.gas_profile.get(func.as_ref()).cloned();
 		match total_func_cost {
-			Some(func_cost) => self.gas_profile.insert(func, func_cost + U256::from(amount)),
-			None => self.gas_profile.insert(func, amount.into()),
+			Some(func_cost) => self.gas_profile.insert(func.as_ref().to_string(), func_cost + U256::from(amount)),
+			None => self.gas_profile.insert(func.as_ref().to_string(), amount.into()),
 		};
 		match prev.checked_add(amount) {
 			// gas charge overflow protection
@@ -213,8 +215,8 @@ impl<'a> Runtime<'a> {
 	}
 
 	/// Charge gas according to closure
-	pub fn charge<F>(&mut self, f: F, func: String) -> Result<()>
-		where F: FnOnce(&vm::Schedule) -> u64
+	pub fn charge<F, S>(&mut self, f: F, func: S) -> Result<()>
+		where F: FnOnce(&vm::Schedule) -> u64, S: AsRef<str>
 	{
 		let amount = f(self.ext.schedule());
 		if !self.charge_gas(amount as u64, func) {
@@ -226,8 +228,8 @@ impl<'a> Runtime<'a> {
 	}
 
 	/// Adjusted charge of gas which scales actual charge according to the wasm opcode counting coefficient
-	pub fn adjusted_charge<F>(&mut self, f: F, func: String) -> Result<()>
-		where F: FnOnce(&vm::Schedule) -> u64
+	pub fn adjusted_charge<F, S>(&mut self, f: F, func: S) -> Result<()>
+		where F: FnOnce(&vm::Schedule) -> u64, S: AsRef<str>
 	{
 		self.charge(|schedule| f(schedule) * schedule.wasm().opcodes_div as u64 / schedule.wasm().opcodes_mul as u64, func)
 	}
@@ -235,8 +237,8 @@ impl<'a> Runtime<'a> {
 	/// Charge gas provided by the closure
 	///
 	/// Closure also can return overflowing flag as None in gas cost.
-	pub fn overflow_charge<F>(&mut self, f: F, func: String) -> Result<()>
-		where F: FnOnce(&vm::Schedule) -> Option<u64>
+	pub fn overflow_charge<F, S>(&mut self, f: F, func: S) -> Result<()>
+		where F: FnOnce(&vm::Schedule) -> Option<u64>, S: AsRef<str>
 	{
 		let amount = match f(self.ext.schedule()) {
 			Some(amount) => amount,
@@ -255,8 +257,8 @@ impl<'a> Runtime<'a> {
 	}
 
 	/// Same as overflow_charge, but with amount adjusted by wasm opcodes coeff
-	pub fn adjusted_overflow_charge<F>(&mut self, f: F, func: String) -> Result<()>
-		where F: FnOnce(&vm::Schedule) -> Option<u64>
+	pub fn adjusted_overflow_charge<F, S>(&mut self, f: F, func: S) -> Result<()>
+		where F: FnOnce(&vm::Schedule) -> Option<u64>, S: AsRef<str>
 	{
 		self.overflow_charge(|schedule|
 			f(schedule)
@@ -274,7 +276,7 @@ impl<'a> Runtime<'a> {
 
 		let val = self.ext.storage_at(&key).map_err(|_| Error::StorageReadError)?;
 
-		self.adjusted_charge(|schedule| schedule.sload_gas as u64, "storage_read".to_string())?;
+		self.adjusted_charge(|schedule| schedule.sload_gas as u64, "storage_read")?;
 
 		self.memory.set(val_ptr as u32, &*val)?;
 
@@ -291,9 +293,9 @@ impl<'a> Runtime<'a> {
 		let former_val = self.ext.storage_at(&key).map_err(|_| Error::StorageUpdateError)?;
 
 		if former_val == H256::zero() && val != H256::zero() {
-			self.adjusted_charge(|schedule| schedule.sstore_set_gas as u64, "storage_write".to_string())?;
+			self.adjusted_charge(|schedule| schedule.sstore_set_gas as u64, "storage_write")?;
 		} else {
-			self.adjusted_charge(|schedule| schedule.sstore_reset_gas as u64, "storage_write".to_string())?;
+			self.adjusted_charge(|schedule| schedule.sstore_reset_gas as u64, "storage_write")?;
 		}
 
 		self.ext.set_storage(key, val).map_err(|_| Error::StorageUpdateError)?;
@@ -341,7 +343,7 @@ impl<'a> Runtime<'a> {
 	/// General gas charging extern.
 	fn gas(&mut self, args: RuntimeArgs) -> Result<()> {
 		let amount: u32 = args.nth_checked(0)?;
-		if self.charge_gas(amount as u64, "gas".to_string()) {
+		if self.charge_gas(amount as u64, "gas") {
 			Ok(())
 		} else {
 			info!("Transaction ran out of gas: {:?}", self.gas_profile);
@@ -359,7 +361,7 @@ impl<'a> Runtime<'a> {
 		let ptr: u32 = args.nth_checked(0)?;
 
 		let args_len = self.args.len() as u64;
-		self.charge(|s| args_len * s.wasm().memcpy as u64, "fetch_input".to_string())?;
+		self.charge(|s| args_len * s.wasm().memcpy as u64, "fetch_input")?;
 
 		self.memory.set(ptr, &self.args[..])?;
 		Ok(())
@@ -437,7 +439,7 @@ impl<'a> Runtime<'a> {
 			}
 		}
 
-		self.adjusted_charge(|schedule| schedule.call_gas as u64, "do_call".to_string())?;
+		self.adjusted_charge(|schedule| schedule.call_gas as u64, "do_call")?;
 
 		let mut result = Vec::with_capacity(result_alloc_len as usize);
 		result.resize(result_alloc_len as usize, 0);
@@ -455,7 +457,7 @@ impl<'a> Runtime<'a> {
 			},
 		};
 
-		self.charge(|_| adjusted_gas, "do_call".to_string())?;
+		self.charge(|_| adjusted_gas, "do_call")?;
 
 		let call_result = self.ext.call(
 			&gas.into(),
@@ -516,14 +518,14 @@ impl<'a> Runtime<'a> {
 
 	fn return_address_ptr(&mut self, ptr: u32, val: Address) -> Result<()>
 	{
-		self.charge(|schedule| schedule.wasm().static_address as u64, "return_address_ptr".to_string())?;
+		self.charge(|schedule| schedule.wasm().static_address as u64, "return_address_ptr")?;
 		self.memory.set(ptr, &*val)?;
 		Ok(())
 	}
 
 	fn return_u256_ptr(&mut self, ptr: u32, val: U256) -> Result<()> {
 		let value: H256 = val.into();
-		self.charge(|schedule| schedule.wasm().static_u256 as u64, "return_u256_ptr".to_string())?;
+		self.charge(|schedule| schedule.wasm().static_u256 as u64, "return_u256_ptr")?;
 		self.memory.set(ptr, &*value)?;
 		Ok(())
 	}
@@ -537,8 +539,8 @@ impl<'a> Runtime<'a> {
 	fn do_create(&mut self, endowment: U256, code_ptr: u32, code_len: u32, result_ptr: u32, scheme: vm::CreateContractAddress) -> Result<RuntimeValue> {
 		let code = self.memory.get(code_ptr, code_len as usize)?;
 
-		self.adjusted_charge(|schedule| schedule.create_gas as u64, "do_create".to_string())?;
-		self.adjusted_charge(|schedule| schedule.create_data_gas as u64 * code.len() as u64, "do_create".to_string())?;
+		self.adjusted_charge(|schedule| schedule.create_gas as u64, "do_create")?;
+		self.adjusted_charge(|schedule| schedule.create_data_gas as u64 * code.len() as u64, "do_create")?;
 
 		let gas_left: U256 = U256::from(self.gas_left()?)
 			* U256::from(self.ext.schedule().wasm().opcodes_mul)
@@ -645,10 +647,10 @@ impl<'a> Runtime<'a> {
 
 		if self.ext.exists(&refund_address).map_err(|_| Error::SuicideAbort)? {
 			trace!(target: "wasm", "Suicide: refund to existing address {}", refund_address);
-			self.adjusted_charge(|schedule| schedule.suicide_gas as u64, "suicide".to_string())?;
+			self.adjusted_charge(|schedule| schedule.suicide_gas as u64, "suicide")?;
 		} else {
 			trace!(target: "wasm", "Suicide: refund to new address {}", refund_address);
-			self.adjusted_charge(|schedule| schedule.suicide_to_new_account_cost as u64, "suicide".to_string())?;
+			self.adjusted_charge(|schedule| schedule.suicide_to_new_account_cost as u64, "suicide")?;
 		}
 
 		self.ext.suicide(&refund_address).map_err(|_| Error::SuicideAbort)?;
@@ -660,7 +662,7 @@ impl<'a> Runtime<'a> {
 
 	///	Signature: `fn blockhash(number: i64, dest: *mut u8)`
 	pub fn blockhash(&mut self, args: RuntimeArgs) -> Result<()> {
-		self.adjusted_charge(|schedule| schedule.blockhash_gas as u64, "blockhash".to_string())?;
+		self.adjusted_charge(|schedule| schedule.blockhash_gas as u64, "blockhash")?;
 		let hash = self.ext.blockhash(&U256::from(args.nth_checked::<u64>(0)?));
 		self.memory.set(args.nth_checked(1)?, &*hash)?;
 
@@ -742,7 +744,7 @@ impl<'a> Runtime<'a> {
 					.checked_mul(schedule.log_data_gas as u64)
 					.and_then(|data_gas| data_gas.checked_add(topics_gas))
 			},
-			"elog".to_string()
+			"elog"
 		)?;
 
 		let mut topics: Vec<H256> = Vec::with_capacity(topic_count as usize);
