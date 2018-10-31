@@ -1128,6 +1128,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 		match result {
 			Err(vm::Error::Internal(msg)) => Err(ExecutionError::Internal(msg)),
 			Err(exception) => {
+				info!("Transaction failed with exception: {:?}", exception);
 				Ok(Executed {
 					exception: Some(exception),
 					gas: t.gas,
@@ -1143,6 +1144,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 				})
 			},
 			Ok(r) => {
+				info!("Transaction completed with output {:?}", output);
 				Ok(Executed {
 					exception: if r.apply_state { None } else { Some(vm::Error::Reverted) },
 					gas: t.gas,
