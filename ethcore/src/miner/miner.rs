@@ -52,7 +52,7 @@ use miner;
 use miner::pool_client::{PoolClient, CachedNonceClient, NonceCache};
 use receipt::RichReceipt;
 use spec::Spec;
-use state::State;
+use state::{self, State};
 use ethkey::Password;
 
 /// Different possible definitions for pending transaction set.
@@ -810,7 +810,7 @@ impl Miner {
 const SEALING_TIMEOUT_IN_BLOCKS : u64 = 5;
 
 impl miner::MinerService for Miner {
-	type State = State<::state_db::StateDB>;
+	type State = State<state::backend::Basic<journaldb::overlaydb::OverlayDB>>;
 
 	fn authoring_params(&self) -> AuthoringParams {
 		self.params.read().clone()
@@ -1260,8 +1260,7 @@ impl miner::MinerService for Miner {
 	}
 
 	fn pending_state(&self, latest_block_number: BlockNumber) -> Option<Self::State> {
-		unimplemented!();
-		// self.map_existing_pending_block(|b| b.state().clone(), latest_block_number)
+		self.map_existing_pending_block(|b| b.state().clone(), latest_block_number)
 	}
 
 	fn pending_block_header(&self, latest_block_number: BlockNumber) -> Option<Header> {
