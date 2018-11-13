@@ -36,3 +36,7 @@ Gas Price
 Gas Limit
 ==================
 16000000
+
+⚠️  Note ⚠️
+==================
+Deployments and testing for confidential smart contracts currently need to be run against the Oasis Devnet. We are working on adding confidentiality support to our local chain for testing purposes in future releases.
