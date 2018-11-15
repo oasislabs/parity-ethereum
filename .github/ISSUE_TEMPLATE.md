@@ -1,11 +1,8 @@
-_Before filing a new issue, please **provide the following information**._
+_A clear and concise description of what the bug is._
 
-- **Parity Ethereum version**: 0.0.0
-- **Operating system**: Windows / MacOS / Linux
-- **Installation**: homebrew / one-line installer / built from source
-- **Fully synchronized**: no / yes
-- **Network**: ethereum / ropsten / kovan / ...
-- **Restarted**: no / yes
+## Details
 
-_Your issue description goes here below. Try to include **actual** vs. **expected behavior** and **steps to reproduce** the issue._
+Add any other context about the problem here.
 
+## Acceptance Criteria
+* What indicates the issue is resolved?
