@@ -137,7 +137,7 @@ struct InterpreterParams {
 	/// Param types encoding
 	pub params_type: ParamsType,
 	/// Virtual call indicator
-	pub virtual: bool,
+	pub virtual_transaction: bool,
 }
 
 impl From<ActionParams> for InterpreterParams {
@@ -154,7 +154,7 @@ impl From<ActionParams> for InterpreterParams {
 			data: params.data,
 			call_type: params.call_type,
 			params_type: params.params_type,
-			virtual: params.virtual,
+			virtual_transaction: params.virtual_transaction,
 		}
 	}
 }
@@ -192,7 +192,7 @@ pub struct Interpreter<Cost: CostType> {
 	resume_output_range: Option<(U256, U256)>,
 	resume_result: Option<InstructionResult<Cost>>,
 	last_stack_ret_len: usize,
-	virtual: bool,
+	virtual_transaction: bool,
 	_type: PhantomData<Cost>,
 }
 
@@ -206,13 +206,13 @@ impl<Cost: 'static + CostType> vm::Exec for Interpreter<Cost> {
 				InterpreterResult::Done(value) => return Ok(value),
 				InterpreterResult::Trap(trap) => match trap {
 					TrapKind::Call(params) => {
-						if (!self.virtual) {
+						if (!self.virtual_transaction) {
 							info!("Transaction failed. Gas_profile: {:?}", gas_profile);
 						}
 						return Err(TrapError::Call(params, self));
 					},
 					TrapKind::Create(params, address) => {
-						if (!self.virtual) {
+						if (!self.virtual_transaction) {
 							info!("Transaction failed. Gas_profile: {:?}", gas_profile);
 						}
 						return Err(TrapError::Create(params, address, self));
@@ -300,7 +300,7 @@ impl<Cost: CostType> Interpreter<Cost> {
 			last_stack_ret_len: 0,
 			resume_output_range: None,
 			resume_result: None,
-			virtual: params.virtual,
+			virtual_transaction: params.virtual_transaction,
 			_type: PhantomData,
 		}
 	}

@@ -91,7 +91,7 @@ pub struct ActionParams {
 	/// Param types encoding
 	pub params_type: ParamsType,
 	/// Virtual call indicator
-	pub virtual: bool,
+	pub virtual_transaction: bool,
 }
 
 impl Default for ActionParams {
@@ -110,7 +110,7 @@ impl Default for ActionParams {
 			data: None,
 			call_type: CallType::None,
 			params_type: ParamsType::Separate,
-			virtual: false,
+			virtual_transaction: false,
 		}
 	}
 }
@@ -131,7 +131,7 @@ impl From<ethjson::vm::Transaction> for ActionParams {
 			value: ActionValue::Transfer(t.value.into()),
 			call_type: match address.is_zero() { true => CallType::None, false => CallType::Call },	// TODO @debris is this correct?
 			params_type: ParamsType::Separate,
-			virtual: false,
+			virtual_transaction: false,
 		}
 	}
 }
