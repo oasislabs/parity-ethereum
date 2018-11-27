@@ -857,7 +857,7 @@ impl<B: Backend> State<B> {
 
 		match virt {
 			true => e.transact_virtual(t, options),
-			false => e.transact(t, options),
+			false => e.transact(t, options, false),
 		}
 	}
 
