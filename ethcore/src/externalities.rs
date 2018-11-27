@@ -175,6 +175,7 @@ impl<'a, T: 'a, V: 'a, B: 'a> Ext for Externalities<'a, T, V, B>
 				data: Some(H256::from(number).to_vec()),
 				call_type: CallType::Call,
 				params_type: vm::ParamsType::Separate,
+				virtual_transaction: false,
 			};
 
 			let mut ex = Executive::new(self.state, self.env_info, self.machine, self.schedule);
@@ -234,6 +235,7 @@ impl<'a, T: 'a, V: 'a, B: 'a> Ext for Externalities<'a, T, V, B>
 			data: None,
 			call_type: CallType::None,
 			params_type: vm::ParamsType::Embedded,
+			virtual_transaction: false,
 		};
 
 		if !self.static_flag {
@@ -289,6 +291,7 @@ impl<'a, T: 'a, V: 'a, B: 'a> Ext for Externalities<'a, T, V, B>
 			data: Some(data.to_vec()),
 			call_type: call_type,
 			params_type: vm::ParamsType::Separate,
+			virtual_transaction: false,
 		};
 
 		if let Some(value) = value {

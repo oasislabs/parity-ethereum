@@ -136,6 +136,8 @@ struct InterpreterParams {
 	pub call_type: CallType,
 	/// Param types encoding
 	pub params_type: ParamsType,
+	/// Virtual call indicator
+	pub virtual_transaction: bool,
 }
 
 impl From<ActionParams> for InterpreterParams {
@@ -152,6 +154,7 @@ impl From<ActionParams> for InterpreterParams {
 			data: params.data,
 			call_type: params.call_type,
 			params_type: params.params_type,
+			virtual_transaction: params.virtual_transaction,
 		}
 	}
 }
@@ -202,11 +205,17 @@ impl<Cost: 'static + CostType> vm::Exec for Interpreter<Cost> {
 				InterpreterResult::Done(value) => return Ok(value),
 				InterpreterResult::Trap(trap) => match trap {
 					TrapKind::Call(params) => {
-						info!("Transaction failed. Gas_profile: {:?}", gas_profile);
+						if !self.params.virtual_transaction {
+							#[cfg(evm_debug)]
+							info!("Transaction failed. Gas_profile: {:?}", gas_profile);
+						}
 						return Err(TrapError::Call(params, self));
 					},
 					TrapKind::Create(params, address) => {
-						info!("Transaction failed. Gas_profile: {:?}", gas_profile);
+						if !self.params.virtual_transaction {
+							#[cfg(evm_debug)]
+							info!("Transaction failed. Gas_profile: {:?}", gas_profile);
+						}
 						return Err(TrapError::Create(params, address, self));
 					},
 				},

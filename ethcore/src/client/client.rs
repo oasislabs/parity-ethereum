@@ -634,7 +634,7 @@ impl Importer {
 							let machine = self.engine.machine();
 							let schedule = machine.schedule(env_info.number);
 							let res = Executive::new(&mut state, &env_info, &machine, &schedule)
-								.transact(&transaction, options);
+								.transact(&transaction, options, false);
 
 							let res = match res {
 								Err(ExecutionError::Internal(e)) =>

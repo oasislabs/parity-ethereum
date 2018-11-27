@@ -672,6 +672,7 @@ impl Spec {
 					data: None,
 					call_type: CallType::None,
 					params_type: ParamsType::Embedded,
+					virtual_transaction: false,
 				};
 
 				let mut substate = Substate::new();
