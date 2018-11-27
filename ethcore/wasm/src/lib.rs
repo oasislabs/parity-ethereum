@@ -144,7 +144,9 @@ impl WasmInterpreter {
 			let invoke_result = module_instance.invoke_export("call", &[], &mut runtime);
 
 			let mut execution_outcome = ExecutionOutcome::NotSpecial;
-			info!("Transaction gas profile: {:?}", runtime.gas_profile);
+			if (!self.params.virtual) {
+				info!("Transaction gas profile: {:?}", runtime.gas_profile);
+			}
 			if let Err(InterpreterError::Trap(ref trap)) = invoke_result {
 				if let wasmi::TrapKind::Host(ref boxed) = *trap.kind() {
 					let ref runtime_err = boxed.downcast_ref::<runtime::Error>()

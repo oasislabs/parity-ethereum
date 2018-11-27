@@ -778,10 +778,10 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 	}
 
 	/// This function should be used to execute transaction.
-	pub fn transact<T, V>(&'a mut self, t: &SignedTransaction, options: TransactOptions<T, V>)
+	pub fn transact<T, V>(&'a mut self, t: &SignedTransaction, options: TransactOptions<T, V>, virtual: bool)
 		-> Result<Executed<T::Output, V::Output>, ExecutionError> where T: Tracer, V: VMTracer,
 	{
-		self.transact_with_tracer(t, options.check_nonce, options.output_from_init_contract, options.tracer, options.vm_tracer)
+		self.transact_with_tracer(t, options.check_nonce, options.output_from_init_contract, options.tracer, options.vm_tracer, virtual)
 	}
 
 	/// Execute a transaction in a "virtual" context.
@@ -798,7 +798,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 			self.state.add_balance(&sender, &(needed_balance - balance), CleanupMode::NoEmpty)?;
 		}
 
-		self.transact(t, options)
+		self.transact(t, options, true)
 	}
 
 	/// Execute transaction/call with tracing enabled
@@ -808,7 +808,8 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 		check_nonce: bool,
 		output_from_create: bool,
 		mut tracer: T,
-		mut vm_tracer: V
+		mut vm_tracer: V,
+		virtual: bool,
 	) -> Result<Executed<T::Output, V::Output>, ExecutionError> where T: Tracer, V: VMTracer {
 		let sender = t.sender();
 		let nonce = self.state.nonce(&sender)?;
@@ -875,6 +876,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 					data: None,
 					call_type: CallType::None,
 					params_type: vm::ParamsType::Embedded,
+					virtual: virtual,
 				};
 				let res = self.create(params, &mut substate, &mut tracer, &mut vm_tracer);
 				let out = match &res {
@@ -897,6 +899,7 @@ impl<'a, B: 'a + StateBackend> Executive<'a, B> {
 					data: Some(t.data.clone()),
 					call_type: CallType::Call,
 					params_type: vm::ParamsType::Separate,
+					virtual: virtual,
 				};
 				let res = self.call(params, &mut substate, &mut tracer, &mut vm_tracer);
 				let out = match &res {

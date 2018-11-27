@@ -220,7 +220,6 @@ impl<'a> Runtime<'a> {
 	{
 		let amount = f(self.ext.schedule());
 		if !self.charge_gas(amount as u64, func) {
-			info!("Transaction ran out of gas: {:?}", self.gas_profile);
 			Err(Error::GasLimit)
 		} else {
 			Ok(())
@@ -243,13 +242,11 @@ impl<'a> Runtime<'a> {
 		let amount = match f(self.ext.schedule()) {
 			Some(amount) => amount,
 			None => {
-				info!("Transaction ran out of gas: {:?}", self.gas_profile);
 				return Err(Error::GasLimit.into());
 			}
 		};
 
 		if !self.charge_gas(amount as u64, func) {
-			info!("Transaction ran out of gas: {:?}", self.gas_profile);
 			Err(Error::GasLimit.into())
 		} else {
 			Ok(())
@@ -346,7 +343,6 @@ impl<'a> Runtime<'a> {
 		if self.charge_gas(amount as u64, "gas") {
 			Ok(())
 		} else {
-			info!("Transaction ran out of gas: {:?}", self.gas_profile);
 			Err(Error::GasLimit.into())
 		}
 	}
@@ -655,7 +651,6 @@ impl<'a> Runtime<'a> {
 
 		self.ext.suicide(&refund_address).map_err(|_| Error::SuicideAbort)?;
 
-		info!("Runtime suicide. Gas profile: {:?}", self.gas_profile);
 		// We send trap to interpreter so it should abort further execution
 		Err(Error::Suicide.into())
 	}
