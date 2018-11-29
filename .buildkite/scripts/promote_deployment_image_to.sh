@@ -25,7 +25,7 @@ new_image_tag=$1
 #################
 # Local variables
 #################
-docker_image_name=oasislabs/testnet
+docker_image_name=oasislabs/parity-ethereum
 deployment_image_tag=$(buildkite-agent meta-data \
                        get \
                        "deployment_image_tag"
