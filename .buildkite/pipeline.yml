@@ -9,6 +9,8 @@ steps:
 
   - label: Build docker image (all branch commits)
     branches: "*"
+    agents:
+      buildkite_agent_size: large
     command:
       - .buildkite/scripts/build_tag_push_deployment_image.sh
 
