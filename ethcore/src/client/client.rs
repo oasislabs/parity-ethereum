@@ -2370,7 +2370,7 @@ impl super::traits::EngineClient for Client {
 }
 
 impl ProvingBlockChainClient for Client {
-	fn prove_storage(&self, key1: H256, key2: H256, id: BlockId) -> Option<(Vec<Bytes>, H256)> {
+	fn prove_storage(&self, key1: H256, key2: H256, id: BlockId) -> Option<(Vec<Bytes>, Vec<u8>)> {
 		self.state_at(id)
 			.and_then(move |state| state.prove_storage(key1, key2).ok())
 	}

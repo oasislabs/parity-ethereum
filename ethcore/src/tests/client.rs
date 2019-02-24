@@ -360,7 +360,7 @@ fn transaction_proof() {
 	let schedule = machine.schedule(env_info.number);
 	let mut state = State::from_existing(backend, root, 0.into(), factories.clone()).unwrap();
 	Executive::new(&mut state, &env_info, &machine, &schedule)
-		.transact(&transaction, TransactOptions::with_no_tracing().dont_check_nonce()).unwrap();
+		.transact(&transaction, TransactOptions::with_no_tracing().dont_check_nonce(), false).unwrap();
 
 	assert_eq!(state.balance(&Address::default()).unwrap(), 5.into());
 	assert_eq!(state.balance(&address).unwrap(), 95.into());

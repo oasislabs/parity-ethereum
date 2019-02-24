@@ -196,7 +196,7 @@ impl<T: ProvingBlockChainClient + ?Sized> Provider for T {
 		self.prove_storage(req.address_hash, req.key_hash, BlockId::Hash(req.block_hash)).map(|(proof, item) | {
 			::request::StorageResponse {
 				proof,
-				value: item,
+				value: H256::from_slice(&item[..32]),
 			}
 		})
 	}

@@ -17,6 +17,7 @@
 use std::cmp;
 use std::collections::HashMap;
 use ethereum_types::{U256, H256, Address};
+use hash;
 use vm::{self, CallType};
 use wasmi::{self, MemoryRef, RuntimeArgs, RuntimeValue, Error as InterpreterError, Trap, TrapKind};
 use super::panic_payload;
@@ -266,6 +267,7 @@ impl<'a> Runtime<'a> {
 	}
 
 	/// Read from the storage to wasm memory
+	/// All storage read through here *must* be an H256.
 	pub fn storage_read(&mut self, args: RuntimeArgs) -> Result<()>
 	{
 		let key = self.h256_at(args.nth_checked(0)?)?;
@@ -281,6 +283,7 @@ impl<'a> Runtime<'a> {
 	}
 
 	/// Write to storage from wasm memory
+	/// All storage written through here *must* be an H256.
 	pub fn storage_write(&mut self, args: RuntimeArgs) -> Result<()>
 	{
 		let key = self.h256_at(args.nth_checked(0)?)?;
@@ -756,6 +759,52 @@ impl<'a> Runtime<'a> {
 
 		Ok(())
 	}
+
+	/// Signature: `fn get_bytes(key: *const u8, result: *mut u8)`
+	pub fn get_bytes(&mut self, args: RuntimeArgs) -> Result<()> {
+		let key = self.storage_bytes_key(self.h256_at(args.nth_checked(0)?)?);
+		let bytes = self.ext.storage_bytes_at(&key).map_err(|_| Error::StorageReadError)?;
+		self.memory.set(args.nth_checked(1)?, &bytes)?;
+		Ok(())
+	}
+
+	/// Signature: `fn get_bytes_len(key: *const u8) -> u64`
+	pub fn get_bytes_len(&mut self, args: RuntimeArgs) -> Result<RuntimeValue> {
+		let key = self.storage_bytes_key(self.h256_at(args.nth_checked(0)?)?);
+		let len = self.ext.storage_bytes_len(&key).map_err(|_| Error::StorageReadError)?;
+		Ok(RuntimeValue::I64(len as i64))
+	}
+
+	/// Signature: `fn set_bytes(key: *const u8, bytes: *mut u8, len: u64)`
+	pub fn set_bytes(&mut self, args: RuntimeArgs) -> Result<()> {
+		let key = self.storage_bytes_key(self.h256_at(args.nth_checked(0)?)?);
+
+		let former_bytes = self.ext.storage_bytes_at(&key).map_err(|_| Error::StorageUpdateError)?;
+
+		let bytes_ptr: u32 = args.nth_checked(1)?;
+		let len: u64 = args.nth_checked(2)?;
+		let bytes = self.memory.get(bytes_ptr, len as usize)?;
+		let is_bytes_empty = bytes.is_empty();
+
+		let reset = !(former_bytes.is_empty() && !is_bytes_empty);
+		// TODO: gas cost
+		//self.storage_bytes_charge(len, reset)?;
+
+		self.ext.set_storage_bytes(key, bytes).map_err(|_| Error::StorageUpdateError)?;
+
+		// TODO: gas refund
+		//if !former_bytes.is_empty() && is_bytes_empty {
+		//	self.ext.inc_sstore_clears(former_bytes.len() as u64).map_err(|_| Error::StorageUpdateError)?;
+		//}
+
+		Ok(())
+	}
+
+	/// Transform the key from the wasm input into the actual key stored in the
+	/// underlying state trie.
+	fn storage_bytes_key(&self, key: H256) -> H256 {
+		hash::keccak(key)
+	}
 }
 
 mod ext_impl {
@@ -806,6 +855,9 @@ mod ext_impl {
 				SENDER_FUNC => void!(self.sender(args)),
 				ORIGIN_FUNC => void!(self.origin(args)),
 				ELOG_FUNC => void!(self.elog(args)),
+				GET_BYTES_FUNC => void!(self.get_bytes(args)),
+				GET_BYTES_LEN_FUNC => some!(self.get_bytes_len(args)),
+				SET_BYTES_FUNC => void!(self.set_bytes(args)),
 				CREATE2_FUNC => some!(self.create2(args)),
 				GASLEFT_FUNC => some!(self.gasleft()),
 				_ => panic!("env module doesn't provide function at index {}", index),

@@ -594,6 +594,7 @@ impl StateInfo for () {
 	fn balance(&self, _address: &Address) -> ethtrie::Result<U256> { unimplemented!() }
 	fn storage_at(&self, _address: &Address, _key: &H256) -> ethtrie::Result<H256> { unimplemented!() }
 	fn code(&self, _address: &Address) -> ethtrie::Result<Option<Arc<Bytes>>> { unimplemented!() }
+	fn storage_bytes_at(&self, _address: &Address, _key: &H256) -> ethtrie::Result<Vec<u8>> { unimplemented!() }
 }
 
 impl StateClient for TestBlockChainClient {
@@ -896,7 +897,7 @@ impl IoClient for TestBlockChainClient {
 }
 
 impl ProvingBlockChainClient for TestBlockChainClient {
-	fn prove_storage(&self, _: H256, _: H256, _: BlockId) -> Option<(Vec<Bytes>, H256)> {
+	fn prove_storage(&self, _: H256, _: H256, _: BlockId) -> Option<(Vec<Bytes>, Vec<u8>)> {
 		None
 	}
 

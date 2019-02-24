@@ -347,6 +347,9 @@ pub trait StateInfo {
 
 	/// Get accounts' code.
 	fn code(&self, a: &Address) -> TrieResult<Option<Arc<Bytes>>>;
+
+	/// Mutate storage of account `address` so that it is `value` for `key`.
+	fn storage_bytes_at(&self, address: &Address, key: &H256) -> TrieResult<Vec<u8>>;
 }
 
 impl<B: Backend> StateInfo for State<B> {
@@ -354,6 +357,7 @@ impl<B: Backend> StateInfo for State<B> {
 	fn balance(&self, a: &Address) -> TrieResult<U256> { State::balance(self, a) }
 	fn storage_at(&self, address: &Address, key: &H256) -> TrieResult<H256> { State::storage_at(self, address, key) }
 	fn code(&self, address: &Address) -> TrieResult<Option<Arc<Bytes>>> { State::code(self, address) }
+	fn storage_bytes_at(&self, address: &Address, key: &H256) -> TrieResult<Vec<u8>> { State::storage_bytes_at(self, address, key) }
 }
 
 const SEC_TRIE_DB_UNWRAP_STR: &'static str = "A state can only be created with valid root. Creating a SecTrieDB with a valid root will not fail. \
@@ -485,7 +489,7 @@ impl<B: Backend> State<B> {
 	}
 
 	/// Destroy the current object and return single account data.
-	pub fn into_account(self, account: &Address) -> TrieResult<(Option<Arc<Bytes>>, HashMap<H256, H256>)> {
+	pub fn into_account(self, account: &Address) -> TrieResult<(Option<Arc<Bytes>>, HashMap<H256, Vec<u8>>)> {
 		// TODO: deconstruct without cloning.
 		let account = self.require(account, true)?;
 		Ok((account.code().clone(), account.storage_changes().clone()))
@@ -577,7 +581,7 @@ impl<B: Backend> State<B> {
 					// The account exists at this checkpoint.
 					Some(Some(AccountEntry { account: Some(ref account), .. })) => {
 						if let Some(value) = account.cached_storage_at(key) {
-							return Ok(Some(value));
+							return Ok(Some(H256::from(value.as_slice())));
 						} else {
 							// This account has checkpoint entry, but the key is not in the entry's cache. We can use
 							// original_storage_at if current account's original storage root is the same as checkpoint
@@ -624,9 +628,9 @@ impl<B: Backend> State<B> {
 
 	fn storage_at_inner<FCachedStorageAt, FStorageAt>(
 		&self, address: &Address, key: &H256, f_cached_at: FCachedStorageAt, f_at: FStorageAt,
-	) -> TrieResult<H256> where
-		FCachedStorageAt: Fn(&Account, &H256) -> Option<H256>,
-		FStorageAt: Fn(&Account, &HashDB<KeccakHasher, DBValue>, &H256) -> TrieResult<H256>
+	) -> TrieResult<Option<Vec<u8>>> where
+		FCachedStorageAt: Fn(&Account, &H256) -> Option<Vec<u8>>,
+		FStorageAt: Fn(&Account, &HashDB<KeccakHasher, DBValue>, &H256) -> TrieResult<Option<Vec<u8>>>
 	{
 		// Storage key search and update works like this:
 		// 1. If there's an entry for the account in the local cache check for the key and return it if found.
@@ -641,17 +645,17 @@ impl<B: Backend> State<B> {
 				match maybe_acc.account {
 					Some(ref account) => {
 						if let Some(value) = f_cached_at(account, key) {
-							return Ok(value);
+							return Ok(Some(value));
 						} else {
 							local_account = Some(maybe_acc);
 						}
 					},
-					_ => return Ok(H256::new()),
+					_ => return Ok(None),
 				}
 			}
 			// check the global cache and and cache storage key there if found,
 			let trie_res = self.db.get_cached(address, |acc| match acc {
-				None => Ok(H256::new()),
+				None => Ok(None),
 				Some(a) => {
 					let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), a.address_hash(address));
 					f_at(a, account_db.as_hashdb(), key)
@@ -668,19 +672,19 @@ impl<B: Backend> State<B> {
 					let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), account.address_hash(address));
 					return f_at(account, account_db.as_hashdb(), key)
 				} else {
-					return Ok(H256::new())
+					return Ok(None)
 				}
 			}
 		}
 
 		// check if the account could exist before any requests to trie
-		if self.db.is_known_null(address) { return Ok(H256::zero()) }
+		if self.db.is_known_null(address) { return Ok(None) }
 
 		// account is not found in the global cache, get from the DB and insert into local
 		let db = self.factories.trie.readonly(self.db.as_hashdb(), &self.root).expect(SEC_TRIE_DB_UNWRAP_STR);
 		let from_rlp = |b: &[u8]| Account::from_rlp(b).expect("decoding db value failed");
 		let maybe_acc = db.get_with(address, from_rlp)?;
-		let r = maybe_acc.as_ref().map_or(Ok(H256::new()), |a| {
+		let r = maybe_acc.as_ref().map_or(Ok(None), |a| {
 			let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), a.address_hash(address));
 			f_at(a, account_db.as_hashdb(), key)
 		});
@@ -688,8 +692,7 @@ impl<B: Backend> State<B> {
 		r
 	}
 
-	/// Mutate storage of account `address` so that it is `value` for `key`.
-	pub fn storage_at(&self, address: &Address, key: &H256) -> TrieResult<H256> {
+	fn _storage_at(&self, address: &Address, key: &H256) -> TrieResult<Option<Vec<u8>>> {
 		self.storage_at_inner(
 			address,
 			key,
@@ -698,14 +701,62 @@ impl<B: Backend> State<B> {
 		)
 	}
 
+	/// Mutate storage of account `address` so that it is `value` for `key`.
+	pub fn storage_at(&self, address: &Address, key: &H256) -> TrieResult<H256> {
+		let value = self._storage_at(address, key)?;
+
+		if value.is_none() {
+			return Ok(H256::new());
+		}
+
+		let value = value.unwrap();
+
+		if value.is_empty() {
+			return Ok(H256::zero());
+		}
+
+		if value.len() != 32 {
+			error!("Key collision in the patricia trie! Bulk storage should not share a key with H256 storage.");
+			return Err(Box::new(trie::TrieError::DecoderError(H256::new(), rlp::DecoderError::RlpIsTooBig)));
+		}
+
+		Ok(H256::from(value.as_slice()))
+	}
+
+	pub fn storage_bytes_at(&self, address: &Address, key: &H256) -> TrieResult<Vec<u8>> {
+		let value = self._storage_at(address, key)?;
+
+		Ok(match value {
+			None => vec![],
+			Some(v) => v,
+		})
+	}
+
 	/// Get the value of storage after last state commitment.
 	pub fn original_storage_at(&self, address: &Address, key: &H256) -> TrieResult<H256> {
-		self.storage_at_inner(
+		let value = self.storage_at_inner(
 			address,
 			key,
 			|account, key| { account.cached_original_storage_at(key) },
 			|account, db, key| { account.original_storage_at(db, key) },
-		)
+		)?;
+
+		if value.is_none() {
+			return Ok(H256::new());
+		}
+
+		let value = value.unwrap();
+
+		if value.is_empty() {
+			return Ok(H256::zero());
+		}
+
+		if value.len() != 32 {
+			error!("Key collision in the patricia trie! Bulk storage should not share a key with H256 storage.");
+			return Err(Box::new(trie::TrieError::DecoderError(H256::new(), rlp::DecoderError::RlpIsTooBig)));
+		}
+
+		Ok(H256::from(value.as_slice()))
 	}
 
 	/// Get accounts' code.
@@ -769,6 +820,15 @@ impl<B: Backend> State<B> {
 	pub fn set_storage(&mut self, a: &Address, key: H256, value: H256) -> TrieResult<()> {
 		trace!(target: "state", "set_storage({}:{:x} to {:x})", a, key, value);
 		if self.storage_at(a, &key)? != value {
+			self.require(a, false)?.set_storage(key, value.to_vec())
+		}
+
+		Ok(())
+	}
+
+	pub fn set_storage_bytes(&mut self, a: &Address, key: H256, value: Vec<u8>) -> TrieResult<()> {
+		trace!(target: "state", "set_storage({}:{:x} to {:?})", a, key, value);
+		if self.storage_bytes_at(a, &key)? != value {
 			self.require(a, false)?.set_storage(key, value)
 		}
 
@@ -999,7 +1059,7 @@ impl<B: Backend> State<B> {
 				let storage = storage_keys.into_iter().fold(Ok(BTreeMap::new()), |s: TrieResult<_>, key| {
 					let mut s = s?;
 
-					s.insert(key, self.storage_at(&address, &key)?);
+					s.insert(key, self._storage_at(&address, &key)?.unwrap_or(H256::zero().to_vec()));
 					Ok(s)
 				})?;
 
@@ -1161,7 +1221,7 @@ impl<B: Backend> State<B> {
 	}
 
 	/// Replace account code and storage. Creates account if it does not exist.
-	pub fn patch_account(&self, a: &Address, code: Arc<Bytes>, storage: HashMap<H256, H256>) -> TrieResult<()> {
+	pub fn patch_account(&self, a: &Address, code: Arc<Bytes>, storage: HashMap<H256, Vec<u8>>) -> TrieResult<()> {
 		Ok(self.require(a, false)?.reset_code_and_storage(code, storage))
 	}
 }
@@ -1198,14 +1258,14 @@ impl<B: Backend> State<B> {
 	/// Requires a secure trie to be used for correctness.
 	/// `account_key` == keccak(address)
 	/// `storage_key` == keccak(key)
-	pub fn prove_storage(&self, account_key: H256, storage_key: H256) -> TrieResult<(Vec<Bytes>, H256)> {
+	pub fn prove_storage(&self, account_key: H256, storage_key: H256) -> TrieResult<(Vec<Bytes>, Vec<u8>)> {
 		// TODO: probably could look into cache somehow but it's keyed by
 		// address, not keccak(address).
 		let trie = TrieDB::new(self.db.as_hashdb(), &self.root)?;
 		let from_rlp = |b: &[u8]| Account::from_rlp(b).expect("decoding db value failed");
 		let acc = match trie.get_with(&account_key, from_rlp)? {
 			Some(acc) => acc,
-			None => return Ok((Vec::new(), H256::new())),
+			None => return Ok((Vec::new(), H256::new().to_vec())),
 		};
 
 		let account_db = self.factories.accountdb.readonly(self.db.as_hashdb(), account_key);
@@ -1299,11 +1359,11 @@ mod tests {
 			action: trace::Action::Create(trace::Create {
 				from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
 				value: 100.into(),
-				gas: 77412.into(),
+				gas: 78603.into(),
 				init: vec![96, 16, 128, 96, 12, 96, 0, 57, 96, 0, 243, 0, 96, 0, 53, 84, 21, 96, 9, 87, 0, 91, 96, 32, 53, 96, 0, 53, 85],
 			}),
 			result: trace::Res::Create(trace::CreateResult {
-				gas_used: U256::from(3224),
+				gas_used: U256::from(40),
 				address: Address::from_str("8988167e088c87cd314df6d3c2b83da5acb93ace").unwrap(),
 				code: vec![96, 0, 53, 84, 21, 96, 9, 87, 0, 91, 96, 32, 53, 96, 0, 53]
 			}),
@@ -1356,7 +1416,7 @@ mod tests {
 			action: trace::Action::Create(trace::Create {
 				from: "9cce34f7ab185c7aba1b7c8140d620b4bda941d6".into(),
 				value: 100.into(),
-				gas: 78792.into(),
+				gas: 78948.into(),
 				init: vec![91, 96, 0, 86],
 			}),
 			result: trace::Res::FailedCreate(TraceError::OutOfGas),
@@ -2626,13 +2686,13 @@ mod tests {
 					   balance: U256::zero(),
 					   nonce: U256::zero(),
 					   code: Some(Default::default()),
-					   storage: vec![(H256::from(&U256::from(1u64)), H256::from(&U256::from(20u64)))]
+					   storage: vec![(H256::from(&U256::from(1u64)), H256::from(&U256::from(20u64)).to_vec())]
 						   .into_iter().collect(),
 				   }), Some(&PodAccount {
 					   balance: U256::zero(),
 					   nonce: U256::zero(),
 					   code: Some(Default::default()),
-					   storage: vec![(H256::from(&U256::from(1u64)), H256::from(&U256::from(100u64)))]
+					   storage: vec![(H256::from(&U256::from(1u64)), H256::from(&U256::from(100u64)).to_vec())]
 						   .into_iter().collect(),
 				   })).as_ref());
 	}

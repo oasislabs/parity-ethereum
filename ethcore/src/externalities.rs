@@ -131,6 +131,24 @@ impl<'a, T: 'a, V: 'a, B: 'a> Ext for Externalities<'a, T, V, B>
 		}
 	}
 
+	fn storage_bytes_at(&self, key: &H256) -> vm::Result<Vec<u8>> {
+		self.state.storage_bytes_at(&self.origin_info.address, key).map_err(Into::into)
+	}
+
+	fn storage_bytes_len(&self, key: &H256) -> vm::Result<u64> {
+		self.state.storage_bytes_at(&self.origin_info.address, key)
+			.map(|bytes| bytes.len() as u64)
+			.map_err(Into::into)
+	}
+
+	fn set_storage_bytes(&mut self, key: H256, value: Vec<u8>) -> vm::Result<()> {
+		if self.static_flag {
+			Err(vm::Error::MutableCallInStaticContext)
+		} else {
+			self.state.set_storage_bytes(&self.origin_info.address, key, value).map_err(Into::into)
+		}
+	}
+
 	fn is_static(&self) -> bool {
 		return self.static_flag
 	}

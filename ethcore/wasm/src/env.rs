@@ -50,6 +50,9 @@ pub mod ids {
 	pub const ELOG_FUNC: usize = 210;
 	pub const CREATE2_FUNC: usize = 220;
 	pub const GASLEFT_FUNC: usize = 230;
+	pub const GET_BYTES_FUNC: usize = 240;
+	pub const GET_BYTES_LEN_FUNC: usize = 250;
+	pub const SET_BYTES_FUNC: usize = 260;
 
 	pub const PANIC_FUNC: usize = 1000;
 	pub const DEBUG_FUNC: usize = 1010;
@@ -193,6 +196,21 @@ pub mod signatures {
 		None,
 	);
 
+	pub const GET_BYTES: StaticSignature = StaticSignature(
+		&[I32, I32],
+		None,
+	);
+
+	pub const GET_BYTES_LEN: StaticSignature = StaticSignature(
+		&[I32],
+		Some(I64),
+	);
+
+	pub const SET_BYTES: StaticSignature = StaticSignature(
+		&[I32, I32, I64],
+		None,
+	);
+
 	impl Into<wasmi::Signature> for StaticSignature {
 		fn into(self) -> wasmi::Signature {
 			wasmi::Signature::new(self.0, self.1)
@@ -283,6 +301,9 @@ impl wasmi::ModuleImportResolver for ImportResolver {
 			"elog" => host(signatures::ELOG, ids::ELOG_FUNC),
 			"create2" if self.have_create2 => host(signatures::CREATE2, ids::CREATE2_FUNC),
 			"gasleft" if self.have_gasleft => host(signatures::GASLEFT, ids::GASLEFT_FUNC),
+			"get_bytes" => host(signatures::GET_BYTES, ids::GET_BYTES_FUNC),
+			"get_bytes_len" => host(signatures::GET_BYTES_LEN, ids::GET_BYTES_LEN_FUNC),
+			"set_bytes" => host(signatures::SET_BYTES, ids::SET_BYTES_FUNC),
 			_ => {
 				return Err(wasmi::Error::Instantiation(
 					format!("Export {} not found", field_name),
