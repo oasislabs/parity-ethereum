@@ -446,27 +446,25 @@ impl Provider where {
 	}
 
 	fn snapshot_to_storage(raw: Bytes) -> HashMap<H256, Vec<u8>> {
-		/*
-		let items = raw.len() / 64;
-		(0..items).map(|i| {
-			let offset = i * 64;
-			let key = H256::from_slice(&raw[offset..(offset + 32)]);
-			let value = H256::from_slice(&raw[(offset + 32)..(offset + 64)]);
-			(key, value)
-		}).collect()
-		*/
+		// Private tx storage snapshots not implemented for bulk storage.
+		// let items = raw.len() / 64;
+		// (0..items).map(|i| {
+		// 	let offset = i * 64;
+		// 	let key = H256::from_slice(&raw[offset..(offset + 32)]);
+		// 	let value = H256::from_slice(&raw[(offset + 32)..(offset + 64)]);
+		// 	(key, value)
+		// }).collect()
 		unimplemented!()
 	}
 
 	fn snapshot_from_storage(storage: &HashMap<H256, Vec<u8>>) -> Bytes {
-		/*
-		let mut raw = Vec::with_capacity(storage.len() * 64);
-		for (key, value) in storage {
-			raw.extend_from_slice(key);
-			raw.extend_from_slice(value);
-		};
-		raw
-		*/
+		// Private tx storage snapshots not implemented for bulk storage.
+		// let mut raw = Vec::with_capacity(storage.len() * 64);
+		// for (key, value) in storage {
+		// 	raw.extend_from_slice(key);
+		// 	raw.extend_from_slice(value);
+		// };
+		// raw
 		unimplemented!()
 	}
 
