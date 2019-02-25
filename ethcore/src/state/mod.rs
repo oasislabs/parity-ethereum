@@ -717,7 +717,7 @@ impl<B: Backend> State<B> {
 
 		if value.len() != 32 {
 			error!("Key collision in the patricia trie! Bulk storage should not share a key with H256 storage.");
-			return Err(Box::new(trie::TrieError::DecoderError(H256::new(), rlp::DecoderError::RlpIsTooBig)));
+			return Err(Box::new(TrieError::DecoderError(H256::new(), rlp::DecoderError::RlpIsTooBig)));
 		}
 
 		Ok(H256::from(value.as_slice()))
@@ -753,7 +753,7 @@ impl<B: Backend> State<B> {
 
 		if value.len() != 32 {
 			error!("Key collision in the patricia trie! Bulk storage should not share a key with H256 storage.");
-			return Err(Box::new(trie::TrieError::DecoderError(H256::new(), rlp::DecoderError::RlpIsTooBig)));
+			return Err(Box::new(TrieError::DecoderError(H256::new(), rlp::DecoderError::RlpIsTooBig)));
 		}
 
 		Ok(H256::from(value.as_slice()))
