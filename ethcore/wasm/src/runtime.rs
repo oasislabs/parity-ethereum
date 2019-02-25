@@ -764,6 +764,11 @@ impl<'a> Runtime<'a> {
 	pub fn get_bytes(&mut self, args: RuntimeArgs) -> Result<()> {
 		let key = self.storage_bytes_key(self.h256_at(args.nth_checked(0)?)?);
 		let bytes = self.ext.storage_bytes_at(&key).map_err(|_| Error::StorageReadError)?;
+
+		// Gas charge.
+		let gas = self.storage_bytes_gas(self.schedule().sload_gas as u64, bytes.len() as u64, false)?;
+		self.adjusted_charge(|_| gas, "storage_read")?;
+
 		self.memory.set(args.nth_checked(1)?, &bytes)?;
 		Ok(())
 	}
@@ -786,16 +791,21 @@ impl<'a> Runtime<'a> {
 		let bytes = self.memory.get(bytes_ptr, len as usize)?;
 		let is_bytes_empty = bytes.is_empty();
 
+		// Gas charge.
 		let reset = !(former_bytes.is_empty() && !is_bytes_empty);
-		// TODO: gas cost
-		//self.storage_bytes_charge(len, reset)?;
+		let gas = match reset {
+			true => self.storage_bytes_gas(self.schedule().sstore_reset_gas as u64, len, false)?,
+			false => self.storage_bytes_gas(self.schedule().sstore_set_gas as u64, len, false)?,
+		};
+		self.adjusted_charge(|_| gas, "storage_write")?;
 
 		self.ext.set_storage_bytes(key, bytes).map_err(|_| Error::StorageUpdateError)?;
 
-		// TODO: gas refund
-		//if !former_bytes.is_empty() && is_bytes_empty {
-		//	self.ext.inc_sstore_clears(former_bytes.len() as u64).map_err(|_| Error::StorageUpdateError)?;
-		//}
+		// Gas refund.
+		if !former_bytes.is_empty() && is_bytes_empty {
+			let sstore_clears_schedule = self.storage_bytes_gas(self.schedule().sstore_refund_gas as u64, len, true)?;
+			self.ext.add_sstore_refund(sstore_clears_schedule as usize);
+		}
 
 		Ok(())
 	}
@@ -804,6 +814,24 @@ impl<'a> Runtime<'a> {
 	/// underlying state trie.
 	fn storage_bytes_key(&self, key: H256) -> H256 {
 		hash::keccak(key)
+	}
+
+	/// Gas cost or refund for get_bytes/set_bytes operations scaled by number of bytes.
+	fn storage_bytes_gas(&self, gas: u64, len: u64, refund: bool) -> Result<u64> {
+		// Cannot overflow as gas and len are converted from u64s.
+		let mut gas = U256::from(gas) * U256::from(len) / U256::from(32);
+
+		// If this is a charge (not a refund), round up.
+		if !refund && U256::from(gas) * U256::from(len) % U256::from(32) != U256::from(0) {
+			gas = gas + U256::from(1);
+		}
+
+		// Check for u64 overflow.
+		if gas > U256::from(std::u64::MAX) {
+			return Err(Error::GasLimit);
+		}
+
+		Ok(gas.as_u64())
 	}
 }
 
