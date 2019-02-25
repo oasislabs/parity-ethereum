@@ -2162,7 +2162,7 @@ mod tests {
 		};
 		(&mut output).copy_from_slice(&return_data[..(cmp::min(20, return_data.len()))]);
 
-		assert_eq!(result, U256::from(18433));
+		assert_eq!(result, U256::from(15781)); // NOTICE: This value will change if the gas model changes, so please update accordingly.
 		// Transaction successfully returned sender
 		assert_eq!(output[..], sender[..]);
 

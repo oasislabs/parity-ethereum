@@ -2509,13 +2509,13 @@ mod tests {
 		assert_eq!(receipts.len(), 2);
 		assert_eq!(receipts[0].transaction_index, 0);
 		assert_eq!(receipts[0].block_number, 2);
-		assert_eq!(receipts[0].cumulative_gas_used, 53_000.into());
-		assert_eq!(receipts[0].gas_used, 53_000.into());
+		assert_eq!(receipts[0].cumulative_gas_used, 34_100.into()); // NOTICE: This value will change if the gas model changes, so please update accordingly.
+		assert_eq!(receipts[0].gas_used, 34_100.into()); // NOTICE: This value will change if the gas model changes, so please update accordingly.
 
 		assert_eq!(receipts[1].transaction_index, 1);
 		assert_eq!(receipts[1].block_number, 2);
-		assert_eq!(receipts[1].cumulative_gas_used, 106_000.into());
-		assert_eq!(receipts[1].gas_used, 53_000.into());
+		assert_eq!(receipts[1].cumulative_gas_used, 68_200.into()); // NOTICE: This value will change if the gas model changes, so please update accordingly.
+		assert_eq!(receipts[1].gas_used, 34_100.into()); // NOTICE: This value will change if the gas model changes, so please update accordingly.
 
 
 		let receipt = client.transaction_receipt(TransactionId::Hash(receipts[0].transaction_hash));

@@ -170,8 +170,8 @@ impl Default for WasmCosts {
 			grow_mem: 0,
 			memcpy: 1,
 			max_stack_height: 4096*1024,
-			opcodes_mul: 3,
-			opcodes_div: 8,
+			opcodes_mul: 1,
+			opcodes_div: 1,
 			have_create2: false,
 			have_gasleft: false,
 		}
@@ -201,6 +201,7 @@ impl Schedule {
 	}
 
 	/// Schedule for the post-EIP-150-era of the Ethereum main net.
+	/// NOTE: This is the schedule used by the Oasis runtime.
 	pub fn new_post_eip150(max_code_size: usize, fix_exp: bool, no_empty: bool, kill_empty: bool) -> Schedule {
 		Schedule {
 			exceptional_failed_code_deposit: true,
@@ -235,8 +236,8 @@ impl Schedule {
 			quad_coeff_div: 512,
 			create_data_gas: 1,
 			create_data_limit: max_code_size,
-			tx_gas: 21000,
-			tx_create_gas: 53000,
+			tx_gas: 2100,
+			tx_create_gas: 34100,
 			tx_data_zero_gas: 1,
 			tx_data_non_zero_gas: 17,
 			copy_gas: 3,
