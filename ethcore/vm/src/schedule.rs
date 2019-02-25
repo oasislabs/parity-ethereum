@@ -237,7 +237,7 @@ impl Schedule {
 			create_data_gas: 1,
 			create_data_limit: max_code_size,
 			tx_gas: 2100,
-			tx_create_gas: 53000,
+			tx_create_gas: 34100,
 			tx_data_zero_gas: 1,
 			tx_data_non_zero_gas: 17,
 			copy_gas: 3,
