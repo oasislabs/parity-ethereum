@@ -65,7 +65,7 @@ pub struct AccountDiff {
 	/// Change in code, allowed to be `Diff::Same`.
 	pub code: Diff<Bytes>,					// Allowed to be Same
 	/// Change in storage, values are not allowed to be `Diff::Same`.
-	pub storage: BTreeMap<H256, Diff<H256>>,
+	pub storage: BTreeMap<H256, Diff<Vec<u8>>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -135,8 +135,8 @@ impl fmt::Display for AccountDiff {
 		write!(f, "\n")?;
 		for (k, dv) in &self.storage {
 			match *dv {
-				Diff::Born(ref v) => write!(f, "    +  {} => {}\n", interpreted_hash(k), interpreted_hash(v))?,
-				Diff::Changed(ref pre, ref post) => write!(f, "    *  {} => {} (was {})\n", interpreted_hash(k), interpreted_hash(post), interpreted_hash(pre))?,
+				Diff::Born(ref v) => write!(f, "    +  {} => {}\n", interpreted_hash(k), interpreted_hash(&H256::from_slice(&v[..])))?,
+				Diff::Changed(ref pre, ref post) => write!(f, "    *  {} => {} (was {})\n", interpreted_hash(k), interpreted_hash(&H256::from_slice(&post[..])), interpreted_hash(&H256::from_slice(&pre[..])))?,
 				Diff::Died(_) => write!(f, "    X  {}\n", interpreted_hash(k))?,
 				_ => {},
 			}

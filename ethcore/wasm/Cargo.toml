@@ -13,3 +13,4 @@ pwasm-utils = "0.2.2"
 vm = { path = "../vm" }
 ethcore-logger = { path = "../../logger" }
 wasmi = "0.3.0"
+keccak-hash = "0.1"

@@ -60,6 +60,7 @@ fn test_blockhash_eip210(factory: Factory) {
 			data: Some(H256::from(i - 1).to_vec()),
 			call_type: CallType::Call,
 			params_type: ParamsType::Separate,
+			virtual_transaction: false,
 		};
 		let schedule = machine.schedule(env_info.number);
 		let mut ex = Executive::new(&mut state, &env_info, &machine, &schedule);
@@ -83,6 +84,7 @@ fn test_blockhash_eip210(factory: Factory) {
 		data: None,
 		call_type: CallType::Call,
 		params_type: ParamsType::Separate,
+		virtual_transaction: false,
 	};
 	let schedule = machine.schedule(env_info.number);
 	let mut ex = Executive::new(&mut state, &env_info, &machine, &schedule);

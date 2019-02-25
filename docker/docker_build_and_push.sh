@@ -31,7 +31,6 @@ set +x
 # in plain text and we don't want that getting into bash
 # history, so we intentionally disable printing commands
 # with set +x.
-set -x
 
 # Build the deployable image
 docker build --rm --force-rm \
@@ -41,6 +40,8 @@ docker build --rm --force-rm \
   --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} \
   -t ${docker_image_name}:${docker_image_tag} \
   -f docker/Dockerfile .
+
+set -x
 
 docker push ${docker_image_name}:${docker_image_tag}
 

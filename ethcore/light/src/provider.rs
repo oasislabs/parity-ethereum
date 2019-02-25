@@ -193,12 +193,14 @@ impl<T: ProvingBlockChainClient + ?Sized> Provider for T {
 	}
 
 	fn storage_proof(&self, req: request::CompleteStorageRequest) -> Option<request::StorageResponse> {
-		self.prove_storage(req.address_hash, req.key_hash, BlockId::Hash(req.block_hash)).map(|(proof, item) | {
-			::request::StorageResponse {
-				proof,
-				value: item,
-			}
-		})
+		// Light client storage proofs not implemented for bulk storage.
+		// self.prove_storage(req.address_hash, req.key_hash, BlockId::Hash(req.block_hash)).map(|(proof, item) | {
+		// 	::request::StorageResponse {
+		// 		proof,
+		// 		value: item,
+		// 	}
+		// })
+		unimplemented!()
 	}
 
 	fn contract_code(&self, req: request::CompleteCodeRequest) -> Option<request::CodeResponse> {

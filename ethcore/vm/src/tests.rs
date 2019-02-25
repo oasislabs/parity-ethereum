@@ -119,6 +119,18 @@ impl Ext for FakeExt {
 		Ok(())
 	}
 
+	fn storage_bytes_at(&self, key: &H256) -> Result<Vec<u8>> {
+		Ok(Vec::new())
+	}
+
+	fn storage_bytes_len(&self, key: &H256) -> Result<u64> {
+		Ok(0)
+	}
+
+	fn set_storage_bytes(&mut self, key: H256, value: Vec<u8>) -> Result<()> {
+		Ok(())
+	}
+
 	fn exists(&self, address: &Address) -> Result<bool> {
 		Ok(self.balances.contains_key(address))
 	}

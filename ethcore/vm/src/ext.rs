@@ -74,6 +74,17 @@ pub trait Ext {
 	/// Stores a value for given key.
 	fn set_storage(&mut self, key: H256, value: H256) -> Result<()>;
 
+	/// Returns a value for a given key. Extends the storage interface to allow
+	/// for storage values of arbitrary length.
+	fn storage_bytes_at(&self, key: &H256) -> Result<Vec<u8>>;
+
+	/// Returns the length of the storage_bytes_at value.
+	fn storage_bytes_len(&self, key: &H256) -> Result<u64>;
+
+	/// Stores a value for given key. Extends the storage interface to allow
+	/// for storage values of arbitrary length.
+	fn set_storage_bytes(&mut self, key: H256, value: Vec<u8>) -> Result<()>;
+
 	/// Determine whether an account exists.
 	fn exists(&self, address: &Address) -> Result<bool>;
 

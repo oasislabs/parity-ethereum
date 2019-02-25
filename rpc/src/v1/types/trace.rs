@@ -179,7 +179,7 @@ pub struct AccountDiff {
 	pub balance: Diff<U256>,
 	pub nonce: Diff<U256>,
 	pub code: Diff<Bytes>,
-	pub storage: BTreeMap<H256, Diff<H256>>,
+	pub storage: BTreeMap<H256, Diff<Vec<u8>>>,
 }
 
 impl From<account_diff::AccountDiff> for AccountDiff {
