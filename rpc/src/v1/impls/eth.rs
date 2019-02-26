@@ -810,6 +810,13 @@ impl<C, SN: ?Sized, S: ?Sized, M, EM, T: StateInfo + 'static> Eth for EthClient<
 			.map_err(errors::rlp)
 			.and_then(|tx| SignedTransaction::new(tx).map_err(errors::transaction))
 			.and_then(|signed_transaction| {
+				// Return an error if this is a contract deployment with an Oasis header.
+				// Contract deployment settings are supported only on the Oasis Devnet.
+				if signed_transaction.action == transaction::Action::Create {
+					if signed_transaction.data.len() >= 4 && &signed_transaction.data[..4] == b"\0sis" {
+					    return Err(errors::unsupported("Contract deployment settings supported only on the Oasis Devnet.", None));
+					}
+				}
 				FullDispatcher::dispatch_transaction(
 					&*self.client,
 					&*self.miner,
