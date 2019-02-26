@@ -34,7 +34,7 @@ use ethcore::snapshot::SnapshotService;
 use ethcore::encoded;
 use sync::SyncProvider;
 use miner::external::ExternalMinerService;
-use transaction::{SignedTransaction, LocalizedTransaction};
+use transaction::{self, SignedTransaction, LocalizedTransaction};
 
 use jsonrpc_core::{BoxFuture, Result};
 use jsonrpc_core::futures::future;
