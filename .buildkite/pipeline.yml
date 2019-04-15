@@ -24,5 +24,7 @@ steps:
 
   - label: Deploy docker image (master only)
     branches: master
+    agents:
+      buildkite_agent_class: stable
     command:
       - .buildkite/scripts/promote_deployment_image_to.sh latest
